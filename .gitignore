@@ -1,0 +1,7 @@
+# User-provided study files received by the local receiver.
+uploads/*
+!uploads/.gitkeep
+
+# Local development caches.
+__pycache__/
+*.pyc

@@ -1,21 +1,39 @@
-# PDF Part Splitter
+# PDF Part Splitter + Workspace Receiver
 
-A browser-only tool for dividing a large PDF into smaller, page-based PDF parts that are easier to upload. It was made for large study PDFs such as the 171 MB and 229 MB files shared for the maths project.
+A browser tool for dividing a large PDF into smaller, page-based PDF parts that are easier to upload. It also includes a small local receiver so a PDF or ZIP can be sent directly into the workspace's `uploads/` folder.
 
-## Use it
+## Run it
 
-1. Open `index.html` in Chrome/Edge, or serve this folder with:
+Use the included receiver server when you want files to arrive in the workspace:
 
-   ```bash
-   python3 -m http.server 8000
-   ```
+```bash
+python3 server.py
+```
 
-   Then open `http://localhost:8000`.
-2. Select or drop one PDF.
-3. Choose **20 MB** when the upload limit is unknown. Smaller targets such as 20–25 MB are safer for chat uploads.
-4. Click **Split PDF** and download the individual parts. An optional ZIP can also be created.
+Then open `http://localhost:8000`. The live preview uses the same relative `/api/upload` endpoint, so browser code never needs to call `localhost` directly.
 
-The PDF is processed locally in the browser; it is not sent to this project or to a server. `vendor/pdf-lib.min.js` and `vendor/jszip.min.js` are bundled so the splitter does not depend on a CDN.
+If you only need the splitter, `index.html` can also be opened directly in a browser, but the **Workspace receiver** section requires `server.py`.
+
+## Send a file to the workspace
+
+1. Open the page served by `server.py`.
+2. In **Workspace receiver**, select one or more PDFs/ZIPs.
+3. Click **Upload to workspace** and keep the page open until the progress reaches 100%.
+4. The received files are saved under `uploads/` and are intentionally ignored by git.
+
+The receiver accepts files up to 2 GB by default. Change the limit with `MAX_UPLOAD_MB`, for example:
+
+```bash
+MAX_UPLOAD_MB=512 python3 server.py
+```
+
+## Split a large PDF locally
+
+1. Select or drop one PDF.
+2. Choose **20 MB** when the upload limit is unknown. Smaller targets such as 20–25 MB are safer for chat uploads.
+3. Click **Split PDF** and download the individual parts. An optional ZIP can also be created.
+
+The splitter processes the PDF locally in the browser; it does not send the PDF to the receiver unless you explicitly use the receiver section. `vendor/pdf-lib.min.js` and `vendor/jszip.min.js` are bundled so the splitter does not depend on a CDN.
 
 ## Important behaviour
 
