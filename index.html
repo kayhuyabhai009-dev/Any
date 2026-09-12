@@ -1,0 +1,853 @@
+<!doctype html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Split a large PDF into page-based parts sized for easier upload.">
+  <title>PDF Part Splitter</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #17212b;
+      --muted: #647384;
+      --line: #d9e2ea;
+      --panel: rgba(255, 255, 255, .86);
+      --paper: #f5f8fb;
+      --blue: #2164e8;
+      --blue-dark: #154bc0;
+      --blue-soft: #e9f0ff;
+      --teal: #0e9f91;
+      --teal-soft: #e6f8f5;
+      --amber: #a96d13;
+      --amber-soft: #fff4dd;
+      --danger: #c83e4d;
+      --shadow: 0 22px 70px rgba(30, 60, 100, .12);
+      font-family: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 7% 0%, rgba(33, 100, 232, .12), transparent 32rem),
+        radial-gradient(circle at 100% 20%, rgba(14, 159, 145, .10), transparent 28rem),
+        var(--paper);
+    }
+
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: .55; }
+
+    .shell {
+      width: min(1040px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 42px 0 64px;
+    }
+
+    .topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 42px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 11px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -.02em;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      color: white;
+      background: var(--blue);
+      border-radius: 11px;
+      box-shadow: 0 8px 20px rgba(33, 100, 232, .27);
+      font-size: 17px;
+    }
+
+    .privacy {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--teal);
+      background: var(--teal-soft);
+      border: 1px solid #c7ede8;
+      border-radius: 999px;
+      padding: 8px 13px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .privacy::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--teal);
+      box-shadow: 0 0 0 4px rgba(14, 159, 145, .12);
+    }
+
+    .hero { max-width: 720px; margin-bottom: 27px; }
+    .eyebrow {
+      margin: 0 0 11px;
+      color: var(--blue);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 0;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(36px, 6vw, 62px);
+      line-height: .99;
+      letter-spacing: -.055em;
+    }
+    .hero p {
+      max-width: 625px;
+      margin: 19px 0 0;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.65;
+    }
+
+    .card {
+      border: 1px solid rgba(207, 219, 230, .9);
+      border-radius: 24px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .workspace { padding: 26px; }
+
+    .dropzone {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-height: 242px;
+      padding: 30px;
+      border: 1.5px dashed #a8bfdc;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(234, 242, 255, .85), rgba(247, 251, 255, .55));
+      text-align: center;
+      transition: .2s ease;
+      outline: none;
+    }
+    .dropzone:hover, .dropzone:focus-visible, .dropzone.dragover {
+      border-color: var(--blue);
+      background: var(--blue-soft);
+      transform: translateY(-1px);
+    }
+    .dropzone-icon {
+      width: 57px;
+      height: 57px;
+      display: grid;
+      place-items: center;
+      margin: 0 auto 15px;
+      border-radius: 17px;
+      color: var(--blue);
+      background: white;
+      box-shadow: 0 10px 26px rgba(33, 100, 232, .13);
+      font-size: 27px;
+    }
+    .dropzone h2 {
+      margin: 0;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 21px;
+      letter-spacing: -.025em;
+    }
+    .dropzone p { margin: 8px 0 16px; color: var(--muted); font-size: 14px; }
+    .browse-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 17px;
+      border: 0;
+      border-radius: 11px;
+      color: white;
+      background: var(--blue);
+      font-weight: 700;
+      transition: .2s ease;
+    }
+    .browse-button:hover { background: var(--blue-dark); transform: translateY(-1px); }
+
+    .file-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: 16px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: white;
+    }
+    .file-icon {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 12px;
+      color: var(--danger);
+      background: #fff0f2;
+      font-size: 19px;
+      font-weight: 700;
+    }
+    .file-meta { min-width: 0; flex: 1; }
+    .file-name {
+      overflow: hidden;
+      margin-bottom: 3px;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .file-size { color: var(--muted); font-size: 13px; }
+    .clear-button {
+      border: 0;
+      border-radius: 9px;
+      padding: 8px 10px;
+      color: var(--muted);
+      background: transparent;
+      font-size: 13px;
+    }
+    .clear-button:hover { color: var(--danger); background: #fff0f2; }
+
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 15px;
+      margin-top: 20px;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .field label, .field-title {
+      color: #425163;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    select, input[type="number"] {
+      width: 100%;
+      min-height: 46px;
+      padding: 0 13px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      color: var(--ink);
+      background: white;
+      outline: none;
+    }
+    select:focus, input[type="number"]:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(33, 100, 232, .11); }
+    .custom-size { display: none; margin-top: 8px; }
+    .custom-size.visible { display: block; }
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 46px;
+      padding: 0 13px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: white;
+      color: #425163;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .checkbox-row input { width: 17px; height: 17px; accent-color: var(--blue); }
+    .hint {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .action-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-top: 24px;
+      padding-top: 21px;
+      border-top: 1px solid #e5ebf0;
+    }
+    .estimate { color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .estimate strong { color: var(--ink); }
+    .primary-button, .secondary-button {
+      min-height: 46px;
+      border-radius: 11px;
+      padding: 0 18px;
+      font-weight: 700;
+      transition: .2s ease;
+    }
+    .primary-button { border: 1px solid var(--blue); color: white; background: var(--blue); box-shadow: 0 9px 18px rgba(33, 100, 232, .2); }
+    .primary-button:hover:not(:disabled) { background: var(--blue-dark); transform: translateY(-1px); }
+    .secondary-button { border: 1px solid var(--line); color: var(--ink); background: white; }
+    .secondary-button:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); }
+    .cancel-button { display: none; }
+    .cancel-button.visible { display: inline-flex; }
+
+    .status-area { display: none; margin-top: 20px; }
+    .status-area.visible { display: block; }
+    .status-line { display: flex; justify-content: space-between; gap: 15px; color: var(--muted); font-size: 13px; }
+    .status-text { font-weight: 600; color: var(--ink); }
+    .progress-track { height: 9px; overflow: hidden; margin-top: 9px; border-radius: 99px; background: #e6edf4; }
+    .progress-bar { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--blue), #4e91ff); transition: width .25s ease; }
+    .progress-bar.indeterminate { width: 34%; animation: slide 1.2s infinite ease-in-out; }
+    @keyframes slide { 0% { transform: translateX(-110%); } 50% { transform: translateX(210%); } 100% { transform: translateX(310%); } }
+
+    .results { display: none; margin-top: 24px; padding: 26px; }
+    .results.visible { display: block; }
+    .results-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
+    .results h2 { margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 25px; letter-spacing: -.035em; }
+    .results-subtitle { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+    .part-list { display: grid; gap: 10px; }
+    .part-row {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      padding: 13px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, .75);
+    }
+    .part-number {
+      width: 35px;
+      height: 35px;
+      display: grid;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 10px;
+      color: var(--blue);
+      background: var(--blue-soft);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .part-info { min-width: 0; flex: 1; }
+    .part-name { overflow: hidden; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+    .part-details { margin-top: 3px; color: var(--muted); font-size: 12px; }
+    .warning { color: var(--amber); }
+    .download-button {
+      flex: 0 0 auto;
+      min-height: 36px;
+      padding: 0 12px;
+      border: 1px solid #c9d9f7;
+      border-radius: 9px;
+      color: var(--blue);
+      background: #f5f8ff;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .download-button:hover { border-color: var(--blue); background: var(--blue-soft); }
+    .results-actions { display: flex; align-items: center; gap: 10px; margin-top: 18px; }
+    .results-note {
+      margin: 16px 0 0;
+      padding: 12px 14px;
+      border-radius: 12px;
+      color: #6d531f;
+      background: var(--amber-soft);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .error {
+      display: none;
+      margin-top: 17px;
+      padding: 13px 15px;
+      border: 1px solid #f1c7cd;
+      border-radius: 12px;
+      color: #9d2d3c;
+      background: #fff1f3;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .error.visible { display: block; }
+
+    .footer-note {
+      max-width: 760px;
+      margin: 21px auto 0;
+      color: var(--muted);
+      text-align: center;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .footer-note strong { color: var(--ink); }
+
+    @media (max-width: 700px) {
+      .shell { width: min(100% - 20px, 1040px); padding-top: 24px; }
+      .topline { margin-bottom: 34px; }
+      .privacy { padding: 7px 10px; font-size: 11px; }
+      .workspace, .results { padding: 17px; border-radius: 18px; }
+      .dropzone { min-height: 210px; padding: 22px 15px; }
+      .controls { grid-template-columns: 1fr; }
+      .action-row, .results-head { align-items: stretch; flex-direction: column; }
+      .action-row button { width: 100%; }
+      .action-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+      .part-row { align-items: flex-start; }
+      .download-button { margin-left: auto; }
+      .results-actions { flex-direction: column; align-items: stretch; }
+      .results-actions button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="topline">
+      <div class="brand"><span class="brand-mark">↗</span> PDF Part Splitter</div>
+      <div class="privacy">Files stay in your browser</div>
+    </div>
+
+    <section class="hero">
+      <p class="eyebrow">Large file helper</p>
+      <h1>PDF को छोटे upload-ready parts में बाँटें।</h1>
+      <p>बड़ी study PDF को page-wise हिस्सों में split करें, target size चुनें और हर part अलग download करें। यह tool आपके file को किसी server पर upload नहीं करता।</p>
+    </section>
+
+    <section class="card workspace" aria-label="PDF splitter">
+      <div id="dropzone" class="dropzone" role="button" tabindex="0" aria-label="Choose a PDF file">
+        <input id="fileInput" type="file" accept="application/pdf,.pdf" hidden>
+        <div>
+          <div class="dropzone-icon">↑</div>
+          <h2>PDF यहाँ drop करें</h2>
+          <p>या अपने device से एक PDF चुनें</p>
+          <button id="browseButton" class="browse-button" type="button">Choose PDF</button>
+        </div>
+      </div>
+
+      <div id="fileCard" class="file-card" hidden>
+        <div class="file-icon">PDF</div>
+        <div class="file-meta">
+          <div id="fileName" class="file-name"></div>
+          <div id="fileSize" class="file-size"></div>
+        </div>
+        <button id="clearButton" class="clear-button" type="button">Remove</button>
+      </div>
+
+      <div class="controls">
+        <div class="field">
+          <label for="sizePreset">हर part का maximum target size</label>
+          <select id="sizePreset">
+            <option value="20">20 MB — recommended for chat uploads</option>
+            <option value="25">25 MB</option>
+            <option value="50">50 MB</option>
+            <option value="100">100 MB</option>
+            <option value="custom">Custom size…</option>
+          </select>
+          <div id="customSize" class="custom-size">
+            <input id="customSizeInput" type="number" min="5" max="2000" value="20" inputmode="numeric" aria-label="Custom size in MB">
+          </div>
+          <p class="hint">Page के बीच में काटा नहीं जाएगा, इसलिए size target approximate है।</p>
+        </div>
+        <div class="field">
+          <span class="field-title">Output</span>
+          <label class="checkbox-row" for="zipToggle">
+            <input id="zipToggle" type="checkbox">
+            <span>All parts का ZIP भी बनाएं</span>
+          </label>
+          <p class="hint">Individual PDFs हमेशा मिलेंगे। ZIP बड़े files पर extra memory ले सकता है।</p>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <div id="estimate" class="estimate">PDF चुनने के बाद estimated parts यहाँ दिखेंगे।</div>
+        <div class="action-buttons">
+          <button id="cancelButton" class="secondary-button cancel-button" type="button">Cancel</button>
+          <button id="splitButton" class="primary-button" type="button" disabled>Split PDF</button>
+        </div>
+      </div>
+
+      <div id="statusArea" class="status-area" aria-live="polite">
+        <div class="status-line"><span id="statusText" class="status-text">Preparing…</span><span id="statusPercent">0%</span></div>
+        <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+      </div>
+      <div id="errorBox" class="error" role="alert"></div>
+    </section>
+
+    <section id="results" class="card results" aria-live="polite">
+      <div class="results-head">
+        <div>
+          <h2>Your parts are ready</h2>
+          <p id="resultsSubtitle" class="results-subtitle"></p>
+        </div>
+        <button id="newFileButton" class="secondary-button" type="button">Split another PDF</button>
+      </div>
+      <div id="partList" class="part-list"></div>
+      <div class="results-actions">
+        <button id="zipButton" class="primary-button" type="button" hidden>Download all as ZIP</button>
+        <button id="downloadAllButton" class="secondary-button" type="button">Download parts one by one</button>
+      </div>
+      <p class="results-note"><strong>Note:</strong> parts page boundaries पर split हुए हैं। अगर कोई single page target size से बड़ा है, तो उस part का size target से ऊपर हो सकता है—यह normal है।</p>
+    </section>
+
+    <p class="footer-note"><strong>Privacy:</strong> processing पूरी तरह आपके browser में होती है। <strong>Tip:</strong> upload limit पता न हो तो 20 MB target चुनें और parts को एक-एक करके upload करें।</p>
+  </main>
+
+  <script src="vendor/pdf-lib.min.js"></script>
+  <script src="vendor/jszip.min.js"></script>
+  <script>
+    (() => {
+      'use strict';
+
+      const MB = 1024 * 1024;
+      const $ = (id) => document.getElementById(id);
+      const els = {
+        dropzone: $('dropzone'),
+        fileInput: $('fileInput'),
+        browseButton: $('browseButton'),
+        fileCard: $('fileCard'),
+        fileName: $('fileName'),
+        fileSize: $('fileSize'),
+        clearButton: $('clearButton'),
+        sizePreset: $('sizePreset'),
+        customSize: $('customSize'),
+        customSizeInput: $('customSizeInput'),
+        zipToggle: $('zipToggle'),
+        estimate: $('estimate'),
+        splitButton: $('splitButton'),
+        cancelButton: $('cancelButton'),
+        statusArea: $('statusArea'),
+        statusText: $('statusText'),
+        statusPercent: $('statusPercent'),
+        progressBar: $('progressBar'),
+        errorBox: $('errorBox'),
+        results: $('results'),
+        resultsSubtitle: $('resultsSubtitle'),
+        partList: $('partList'),
+        zipButton: $('zipButton'),
+        downloadAllButton: $('downloadAllButton'),
+        newFileButton: $('newFileButton')
+      };
+
+      let selectedFile = null;
+      let generatedParts = [];
+      let cancelRequested = false;
+      let busy = false;
+
+      function formatBytes(bytes) {
+        if (!Number.isFinite(bytes) || bytes < 0) return '—';
+        if (bytes < 1024) return `${bytes} B`;
+        const units = ['KB', 'MB', 'GB'];
+        let value = bytes / 1024;
+        let unit = units[0];
+        for (let i = 0; i < units.length && value >= 1024; i += 1) {
+          value /= 1024;
+          unit = units[i + 1] || 'GB';
+        }
+        return `${value.toFixed(value >= 10 ? 1 : 2)} ${unit}`;
+      }
+
+      function baseName(name) {
+        return name.replace(/\.pdf$/i, '').replace(/[\\/:*?"<>|]+/g, '-').trim() || 'document';
+      }
+
+      function getTargetBytes() {
+        const preset = els.sizePreset.value;
+        const value = preset === 'custom' ? Number(els.customSizeInput.value) : Number(preset);
+        return Math.max(1, value || 20) * MB;
+      }
+
+      function updateEstimate() {
+        if (!selectedFile) {
+          els.estimate.textContent = 'PDF चुनने के बाद estimated parts यहाँ दिखेंगे।';
+          return;
+        }
+        const target = getTargetBytes();
+        const estimated = Math.max(1, Math.ceil(selectedFile.size / target));
+        els.estimate.innerHTML = `<strong>Approx. ${estimated} part${estimated === 1 ? '' : 's'}</strong> · target ${formatBytes(target)} each<br>Actual count page sizes पर depend करेगा।`;
+      }
+
+      function showError(message) {
+        els.errorBox.textContent = message;
+        els.errorBox.classList.add('visible');
+      }
+
+      function clearError() {
+        els.errorBox.textContent = '';
+        els.errorBox.classList.remove('visible');
+      }
+
+      function setProgress(message, percent = null, indeterminate = false) {
+        els.statusArea.classList.add('visible');
+        els.statusText.textContent = message;
+        if (indeterminate || percent === null) {
+          els.statusPercent.textContent = '…';
+          els.progressBar.classList.add('indeterminate');
+          els.progressBar.style.width = '';
+        } else {
+          const safePercent = Math.max(0, Math.min(100, percent));
+          els.statusPercent.textContent = `${Math.round(safePercent)}%`;
+          els.progressBar.classList.remove('indeterminate');
+          els.progressBar.style.width = `${safePercent}%`;
+        }
+      }
+
+      function resetProgress() {
+        els.statusArea.classList.remove('visible');
+        els.progressBar.classList.remove('indeterminate');
+        els.progressBar.style.width = '0%';
+      }
+
+      function setBusy(value) {
+        busy = value;
+        els.splitButton.disabled = value || !selectedFile;
+        els.cancelButton.classList.toggle('visible', value);
+        els.clearButton.disabled = value;
+        els.sizePreset.disabled = value;
+        els.customSizeInput.disabled = value;
+        els.zipToggle.disabled = value;
+        if (value) els.results.classList.remove('visible');
+      }
+
+      function resetSelection() {
+        if (busy) return;
+        selectedFile = null;
+        generatedParts = [];
+        els.fileInput.value = '';
+        els.fileCard.hidden = true;
+        els.splitButton.disabled = true;
+        els.results.classList.remove('visible');
+        els.partList.innerHTML = '';
+        resetProgress();
+        clearError();
+        updateEstimate();
+      }
+
+      function chooseFile(file) {
+        if (!file) return;
+        clearError();
+        if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') {
+          showError('कृपया केवल PDF file चुनें।');
+          return;
+        }
+        selectedFile = file;
+        generatedParts = [];
+        els.fileName.textContent = file.name;
+        els.fileSize.textContent = `${formatBytes(file.size)} · PDF`;
+        els.fileCard.hidden = false;
+        els.splitButton.disabled = false;
+        els.results.classList.remove('visible');
+        resetProgress();
+        updateEstimate();
+      }
+
+      function checkCancelled() {
+        if (cancelRequested) throw new Error('__CANCELLED__');
+      }
+
+      async function buildRange(sourcePdf, start, end, targetBytes, onProbe) {
+        checkCancelled();
+        const pageCount = end - start;
+        onProbe(start, end);
+        const outputPdf = await PDFLib.PDFDocument.create();
+        const pageIndexes = Array.from({ length: pageCount }, (_, index) => start + index);
+        const copiedPages = await outputPdf.copyPages(sourcePdf, pageIndexes);
+        copiedPages.forEach((page) => outputPdf.addPage(page));
+        checkCancelled();
+        const bytes = await outputPdf.save({ useObjectStreams: true, addDefaultPage: false });
+
+        if (bytes.byteLength > targetBytes && pageCount > 1) {
+          const middle = start + Math.ceil(pageCount / 2);
+          const left = await buildRange(sourcePdf, start, middle, targetBytes, onProbe);
+          const right = await buildRange(sourcePdf, middle, end, targetBytes, onProbe);
+          return left.concat(right);
+        }
+
+        return [{
+          start,
+          end,
+          bytes,
+          oversized: bytes.byteLength > targetBytes
+        }];
+      }
+
+      function triggerDownload(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 10000);
+      }
+
+      function downloadPart(part) {
+        triggerDownload(new Blob([part.bytes], { type: 'application/pdf' }), part.filename);
+      }
+
+      function renderResults(pageCount, targetBytes) {
+        const totalBytes = generatedParts.reduce((sum, part) => sum + part.bytes.byteLength, 0);
+        els.resultsSubtitle.textContent = `${generatedParts.length} part${generatedParts.length === 1 ? '' : 's'} · ${pageCount} pages · ${formatBytes(totalBytes)} total output`;
+        els.partList.innerHTML = '';
+
+        generatedParts.forEach((part, index) => {
+          const row = document.createElement('div');
+          row.className = 'part-row';
+          const warning = part.oversized ? ' · target से बड़ा, क्योंकि page को काटा नहीं गया' : '';
+          row.innerHTML = `
+            <div class="part-number">${String(index + 1).padStart(2, '0')}</div>
+            <div class="part-info">
+              <div class="part-name" title="${part.filename}">${part.filename}</div>
+              <div class="part-details ${part.oversized ? 'warning' : ''}">Pages ${part.start + 1}–${part.end} · ${formatBytes(part.bytes.byteLength)}${warning}</div>
+            </div>
+            <button class="download-button" type="button">Download</button>
+          `;
+          row.querySelector('button').addEventListener('click', () => downloadPart(part));
+          els.partList.appendChild(row);
+        });
+
+        els.zipButton.hidden = !els.zipToggle.checked;
+        els.results.classList.add('visible');
+        els.results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      async function makeZip() {
+        if (!generatedParts.length) return;
+        if (!window.JSZip) {
+          showError('ZIP library load नहीं हुई। Individual parts से download करें।');
+          return;
+        }
+        els.zipButton.disabled = true;
+        els.zipButton.textContent = 'Creating ZIP…';
+        try {
+          const zip = new JSZip();
+          generatedParts.forEach((part) => zip.file(part.filename, part.bytes, { binary: true, compression: 'STORE' }));
+          const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'STORE' }, (metadata) => {
+            els.zipButton.textContent = `Creating ZIP ${Math.round(metadata.percent)}%`;
+          });
+          triggerDownload(zipBlob, `${baseName(selectedFile.name)}-parts.zip`);
+        } catch (error) {
+          showError(`ZIP नहीं बन पाया: ${error.message || error}`);
+        } finally {
+          els.zipButton.disabled = false;
+          els.zipButton.textContent = 'Download all as ZIP';
+        }
+      }
+
+      async function splitPdf() {
+        if (!selectedFile || busy) return;
+        clearError();
+        cancelRequested = false;
+        setBusy(true);
+        els.splitButton.textContent = 'Splitting…';
+        try {
+          if (!window.PDFLib || !window.PDFLib.PDFDocument) throw new Error('PDF library load नहीं हुई। Page को refresh करके फिर try करें।');
+          setProgress('PDF memory में load हो रही है…', null, true);
+          const sourceBytes = new Uint8Array(await selectedFile.arrayBuffer());
+          checkCancelled();
+          const sourcePdf = await PDFLib.PDFDocument.load(sourceBytes, { updateMetadata: false });
+          const pageCount = sourcePdf.getPageCount();
+          if (!pageCount) throw new Error('इस PDF में कोई page नहीं मिला।');
+
+          const targetBytes = getTargetBytes();
+          const roughPartCount = Math.max(1, Math.ceil(selectedFile.size / targetBytes));
+          const pagesPerRange = Math.max(1, Math.ceil(pageCount / roughPartCount));
+          const initialRanges = [];
+          for (let start = 0; start < pageCount; start += pagesPerRange) {
+            initialRanges.push({ start, end: Math.min(pageCount, start + pagesPerRange) });
+          }
+
+          let probes = 0;
+          const onProbe = (start, end) => {
+            probes += 1;
+            setProgress(`Pages ${start + 1}–${end} तैयार हो रहे हैं…`, null, true);
+          };
+          const parts = [];
+          for (const range of initialRanges) {
+            const built = await buildRange(sourcePdf, range.start, range.end, targetBytes, onProbe);
+            parts.push(...built);
+            const percent = Math.min(96, (parts.length / Math.max(initialRanges.length, 1)) * 82 + (probes % 5) * 2);
+            setProgress(`${parts.length} part तैयार…`, percent, false);
+          }
+
+          checkCancelled();
+          parts.sort((a, b) => a.start - b.start);
+          const stem = baseName(selectedFile.name);
+          generatedParts = parts.map((part, index) => ({
+            ...part,
+            filename: `${stem}-part-${String(index + 1).padStart(3, '0')}.pdf`
+          }));
+          setProgress('Done — downloads तैयार हैं।', 100, false);
+          renderResults(pageCount, targetBytes);
+        } catch (error) {
+          if (error && error.message === '__CANCELLED__') {
+            setProgress('Cancelled.', 0, false);
+          } else {
+            const message = error && error.message ? error.message : String(error);
+            showError(`PDF split नहीं हो पाई: ${message}. File password-protected हो सकती है या browser memory कम हो सकती है।`);
+            resetProgress();
+          }
+        } finally {
+          cancelRequested = false;
+          setBusy(false);
+          els.splitButton.textContent = 'Split PDF';
+        }
+      }
+
+      els.browseButton.addEventListener('click', (event) => {
+        event.stopPropagation();
+        els.fileInput.click();
+      });
+      els.dropzone.addEventListener('click', () => els.fileInput.click());
+      els.dropzone.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          els.fileInput.click();
+        }
+      });
+      els.fileInput.addEventListener('change', () => chooseFile(els.fileInput.files[0]));
+      els.clearButton.addEventListener('click', resetSelection);
+      els.sizePreset.addEventListener('change', () => {
+        els.customSize.classList.toggle('visible', els.sizePreset.value === 'custom');
+        updateEstimate();
+      });
+      els.customSizeInput.addEventListener('input', updateEstimate);
+      els.splitButton.addEventListener('click', splitPdf);
+      els.cancelButton.addEventListener('click', () => { cancelRequested = true; });
+      els.zipButton.addEventListener('click', makeZip);
+      els.downloadAllButton.addEventListener('click', () => {
+        generatedParts.forEach((part, index) => window.setTimeout(() => downloadPart(part), index * 500));
+      });
+      els.newFileButton.addEventListener('click', resetSelection);
+
+      ['dragenter', 'dragover'].forEach((eventName) => {
+        els.dropzone.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          els.dropzone.classList.add('dragover');
+        });
+      });
+      ['dragleave', 'drop'].forEach((eventName) => {
+        els.dropzone.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          els.dropzone.classList.remove('dragover');
+        });
+      });
+      els.dropzone.addEventListener('drop', (event) => chooseFile(event.dataTransfer.files[0]));
+      window.addEventListener('beforeunload', (event) => {
+        if (busy) {
+          event.preventDefault();
+          event.returnValue = '';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
